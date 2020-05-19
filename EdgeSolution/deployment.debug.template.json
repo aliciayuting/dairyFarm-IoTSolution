@@ -1,0 +1,135 @@
+{
+  "$schema-template": "2.0.0",
+  "modulesContent": {
+    "$edgeAgent": {
+      "properties.desired": {
+        "schemaVersion": "1.0",
+        "runtime": {
+          "type": "docker",
+          "settings": {
+            "minDockerVersion": "v1.25",
+            "loggingOptions": "",
+            "registryCredentials": {}
+          }
+        },
+        "systemModules": {
+          "edgeAgent": {
+            "type": "docker",
+            "settings": {
+              "image": "mcr.microsoft.com/azureiotedge-agent:1.0",
+              "createOptions": {}
+            }
+          },
+          "edgeHub": {
+            "type": "docker",
+            "status": "Stopped",
+            "restartPolicy": "never",
+            "settings": {
+              "image": "mcr.microsoft.com/azureiotedge-hub:1.0",
+              "createOptions": {
+                "HostConfig": {
+                  "PortBindings": {
+                    "5671/tcp": [
+                      {
+                        "HostPort": "5671"
+                      }
+                    ],
+                    "8883/tcp": [
+                      {
+                        "HostPort": "8883"
+                      }
+                    ],
+                    "443/tcp": [
+                      {
+                        "HostPort": "443"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "modules": {
+          "SampleModule": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "Stopped",
+            "restartPolicy": "never",
+            "settings": {
+              "image": "${MODULES.SampleModule.debug}",
+              "createOptions": {
+                "ExposedPorts": {
+                  "5678/tcp": {}
+                },
+                "HostConfig": {
+                  "PortBindings": {
+                    "5678/tcp": [
+                      {
+                        "HostPort": "5678"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "SimulatedTemperatureSensor": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "Stopped",
+            "restartPolicy": "never",
+            "settings": {
+              "image": "mcr.microsoft.com/azureiotedge-simulated-temperature-sensor:1.0",
+              "createOptions": {}
+            }
+          },
+          "SQLServerModule": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "running",
+            "restartPolicy": "always",
+            "settings": {
+              "image": "microsoft/mssql-server-linux:2017-latest",
+              "createOptions": {
+                "Env": [
+                  "ACCEPT_EULA=Y",
+                  "MSSQL_SA_PASSWORD=Strong!Passw0rd"
+                ],
+                "HostConfig": {
+                  "Mounts": [
+                    {
+                      "Source": "sqlVolume",
+                      "Target": "/var/opt/mssql",
+                      "Type": "volume"
+                    }
+                  ],
+                  "PortBindings": {
+                    "1433/tcp": [
+                      {
+                        "HostPort": "1401"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "$edgeHub": {
+      "properties.desired": {
+        "schemaVersion": "1.0",
+        "routes": {
+          "SampleModuleToIoTHub": "FROM /messages/modules/SampleModule/outputs/* INTO $upstream",
+          "sensorToSampleModule": "FROM /messages/modules/SimulatedTemperatureSensor/outputs/temperatureOutput INTO BrokeredEndpoint(\"/modules/SampleModule/inputs/input1\")",
+          "SQLServerModuleToIoTHub": "FROM /messages/modules/SQLServerModule/outputs/* INTO $upstream"
+        },
+        "storeAndForwardConfiguration": {
+          "timeToLiveSecs": 7200
+        }
+      }
+    }
+  }
+}
